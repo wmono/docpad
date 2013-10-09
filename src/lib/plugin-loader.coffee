@@ -54,7 +54,7 @@ class PluginLoader
 		docpad = @docpad
 
 		# Apply
-		@pluginName = pathUtil.basename(@dirPath).replace(/^docpad-plugin-/,'')
+		@pluginName = pathUtil.basename(@dirPath).replace(/^docpad-plugin-/, '')
 		@pluginClass = {}
 		@packageData = {}
 		@nodeModulesPath = pathUtil.resolve(@dirPath, 'node_modules')
@@ -66,9 +66,9 @@ class PluginLoader
 		# Prepare
 		packagePath = @packagePath or pathUtil.resolve(@dirPath, "package.json")
 		failure = (err=null) =>
-			return next(err,false)
+			return next(err, false)
 		success = =>
-			return next(null,true)
+			return next(null, true)
 
 		# Check the package
 		safefs.exists packagePath, (exists) =>
@@ -209,7 +209,7 @@ class PluginLoader
 			return next(err, null)
 
 		# Return our plugin
-		next(null,@pluginClass)
+		next(null, @pluginClass)
 
 		# Chain
 		@

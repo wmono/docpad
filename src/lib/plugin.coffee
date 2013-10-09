@@ -76,7 +76,7 @@ class BasePlugin
 		docpad.mergeConfigurations(configPackages, configsToMerge)
 
 		# Remove listeners if we are disabled
-		@removeListeners()  unless @isEnabled()
+		@removeListeners()  if @isEnabled() is true
 
 		# Chain
 		@

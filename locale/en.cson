@@ -99,7 +99,7 @@
 	pluginsSlow: "We're preparing your plugins, this may take a while the first time. Waiting on the plugins: %s"
 	pluginLoading: "Loading plugin: %s"
 	pluginLoaded: "Loaded plugin: %s"
-	pluginSkipped: "Skipped plugin: %s"
+	pluginDisabled: "Disabled plugin: %s"
 	pluginSkippedDueTo: "Skipped the unsupported plugin: %s due to %s"
 	pluginContinued: "Continuing with the unsupported plugin: %s"
 	pluginNamingConventionInvalid: """

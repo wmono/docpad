@@ -493,7 +493,7 @@ class DocPad extends EventEmitterGrouped
 	# Plugins
 
 	# Plugins that are loading really slow
-	slowPlugins: null  # {}
+	loadingPlugins: null  # {}
 
 	# Loaded plugins indexed by name
 	loadedPlugins: null  # {}
@@ -750,12 +750,6 @@ class DocPad extends EventEmitterGrouped
 
 		# Whether or not we should use the global docpad instance
 		global: false
-
-		# Whether or not we should enable plugins that have not been listed or not
-		enableUnlistedPlugins: true
-
-		# Plugins which should be enabled or not pluginName: pluginEnabled
-		enabledPlugins: {}
 
 		# Whether or not we should skip unsupported plugins
 		skipUnsupportedPlugins: true
@@ -1096,7 +1090,7 @@ class DocPad extends EventEmitterGrouped
 
 		# Dereference and initialise advanced variables
 		# we deliberately ommit initialTemplateData here, as it is setup in getTemplateData
-		@slowPlugins = {}
+		@loadingPlugins = {}
 		@loadedPlugins = {}
 		@exchange = {}
 		@pluginsTemplateData = {}
@@ -1324,8 +1318,20 @@ class DocPad extends EventEmitterGrouped
 		@compareVersion()
 
 		# Welcome Prepare
+		loadedPluginNames = Object.keys(@loadedPlugins).sort()).join(', ')
+		enabledPlugins = []
+		disabledPlugins = []
+		for pluginName in loadedPlugins
+			plugin = @loadedPlugins[pluginName]
+			if plugin.isEnabled()
+				enabledPlugins.push(plugin)
+			else
+				disabledPlugins.push(plugin)
+
+		#
 		if @getDebugging()
-			pluginsList = ("#{pluginName} v#{@loadedPlugins[pluginName].version}"  for pluginName in Object.keys(@loadedPlugins).sort()).join(', ')
+			enabledPlugins = ("#{plugin.name} v#{plugin.version}"  for plugin in enabledPlugins)
+			disabledPlugins = ("#{plugin.name} v#{plugin.version}"  for plugin in enabledPlugins)
 		else
 			pluginsList = Object.keys(@loadedPlugins).sort().join(', ')
 
@@ -2604,13 +2610,13 @@ class DocPad extends EventEmitterGrouped
 		locale = @getLocale()
 
 		# Snore
-		@slowPlugins = {}
+		@loadingPlugins = {}
 		snore = balUtil.createSnore ->
-			docpad.log 'notice', util.format(locale.pluginsSlow, Object.keys(docpad.slowPlugins).join(', '))
+			docpad.log 'notice', util.format(locale.pluginsSlow, Object.keys(docpad.loadingPlugins).join(', '))
 
 		# Async
 		tasks = new TaskGroup().setConfig(concurrency:0).once 'complete', (err) ->
-			docpad.slowPlugins = {}
+			docpad.loadingPlugins = {}
 			snore.clear()
 			return next(err)
 
@@ -2643,7 +2649,7 @@ class DocPad extends EventEmitterGrouped
 
 		# Check
 		loaded = docpad.loadedPlugins[pluginName]?
-		next(null,loaded)
+		next(null, loaded)
 
 		# Chain
 		@
@@ -2655,11 +2661,6 @@ class DocPad extends EventEmitterGrouped
 		docpad = @
 		config = @getConfig()
 		locale = @getLocale()
-		next = (err) ->
-			# Remove from slow plugins
-			delete docpad.slowPlugins[pluginName]
-			# Forward
-			return _next(err)
 
 		# Prepare variables
 		loader = new PluginLoader(
@@ -2668,71 +2669,75 @@ class DocPad extends EventEmitterGrouped
 			BasePlugin: BasePlugin
 		)
 		pluginName = loader.pluginName
-		enabled = (
-			(config.enableUnlistedPlugins  and  config.enabledPlugins[pluginName]? is false)  or
-			config.enabledPlugins[pluginName] is true
-		)
 
-		# If we've already been loaded, then exit early as there is no use for us to load again
-		if docpad.loadedPlugins[pluginName]?
+		# Wrap the completion callback
+		next = (err) ->
+			# Remove the plugin from the loading list
+			delete docpad.loadingPlugins[pluginName]
+
+			# Forward
+			return _next(err)
+
+		# Check if we have already been loaded
+		if docpad.loadedPlugins?[pluginName]?
+			# We have, so we have no need to load the plugin again
 			# However we probably want to reload the configuration as perhaps the user or environment configuration has changed
-			docpad.loadedPlugins[pluginName].setConfig()
+			docpad.loadedPlugins?[pluginName].setConfig()
+
 			# Complete
-			return _next()
+			return next()
+
+		# Log
+		docpad.log 'debug', util.format(locale.pluginLoading, pluginName)
 
 		# Add to loading stores
-		docpad.slowPlugins[pluginName] = true
+		docpad.loadingPlugins[pluginName] = true
 
-		# Check
-		unless enabled
-			# Skip
-			docpad.log 'debug', util.format(locale.pluginSkipped, pluginName)
-			return next()
-		else
-			# Load
-			docpad.log 'debug', util.format(locale.pluginLoading, pluginName)
+		# Check existance
+		loader.exists (err,exists) ->
+			# Error or doesn't exist?
+			return next(err)  if err or not exists
 
-			# Check existance
-			loader.exists (err,exists) ->
-				# Error or doesn't exist?
-				return next(err)  if err or not exists
+			# Check support
+			loader.unsupported (err,unsupported) ->
+				# Error?
+				return next(err)  if err
 
-				# Check support
-				loader.unsupported (err,unsupported) ->
+				# Unsupported?
+				if unsupported
+					# Version?
+					if unsupported in ['version-docpad','version-pugin'] and config.skipUnsupportedPlugins is false
+						docpad.log 'warn', util.format(locale.pluginContinued, pluginName)
+					else
+						# Type?
+						if unsupported is 'type'
+							docpad.log 'debug', util.format(locale.pluginSkippedDueTo, pluginName, unsupported)
+
+						# Something else?
+						else
+							docpad.log 'warn', util.format(locale.pluginSkippedDueTo, pluginName, unsupported)
+
+						# Complete
+						return next()
+
+				# Load the class
+				loader.load (err) ->
 					# Error?
 					return next(err)  if err
 
-					# Unsupported?
-					if unsupported
-						# Version?
-						if unsupported in ['version-docpad','version-pugin'] and config.skipUnsupportedPlugins is false
-							docpad.log 'warn', util.format(locale.pluginContinued, pluginName)
-						else
-							# Type?
-							if unsupported is 'type'
-								docpad.log 'debug', util.format(locale.pluginSkippedDueTo, pluginName, unsupported)
-
-							# Something else?
-							else
-								docpad.log 'warn', util.format(locale.pluginSkippedDueTo, pluginName, unsupported)
-							return next()
-
-					# Load the class
-					loader.load (err) ->
+					# Create an instance
+					loader.create {}, (err, pluginInstance) ->
+						# Error?
 						return next(err)  if err
 
-						# Create an instance
-						loader.create {}, (err,pluginInstance) ->
-							return next(err)  if err
+						# Add to plugin stores
+						docpad.loadedPlugins[loader.pluginName] = pluginInstance
 
-							# Add to plugin stores
-							docpad.loadedPlugins[loader.pluginName] = pluginInstance
+						# Log completion
+						docpad.log 'debug', util.format(locale.pluginLoaded, pluginName)
 
-							# Log completion
-							docpad.log 'debug', util.format(locale.pluginLoaded, pluginName)
-
-							# Forward
-							return next()
+						# Complete
+						return next()
 
 		# Chain
 		@
