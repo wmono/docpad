@@ -786,8 +786,8 @@ class DocPad extends EventEmitterGrouped
 		# If our subscription has failed, when should we try again?
 		subscribeTryAgain: null
 
-		# Terms of Service
-		tos: null
+		# Consent to transmit usage data
+		reportConsent: null
 
 		# Identified
 		identified: null
@@ -2294,7 +2294,7 @@ class DocPad extends EventEmitterGrouped
 		config = @getConfig()
 
 		# Check
-		if config.offline is false and config.reportStatistics
+		if config.offline is false and config.reportConsent and config.reportStatistics
 			# Data
 			data = {}
 			data.userId = @userConfig.username or null
@@ -2341,7 +2341,7 @@ class DocPad extends EventEmitterGrouped
 		config = @getConfig()
 
 		# Check
-		if config.offline is false and config.reportStatistics and @userConfig?.username
+		if config.offline is false and config.reportConsent and config.reportStatistics and @userConfig?.username
 			# Data
 			data = {}
 			data.userId = @userConfig.username  # required

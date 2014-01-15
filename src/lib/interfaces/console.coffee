@@ -393,24 +393,26 @@ class ConsoleInterface
 
 		# TOS
 		welcomeTasks.addTask (complete) ->
-			return complete()  if docpad.config.prompts is false or userConfig.tos is true
+			return complete()  if docpad.config.prompts is false or userConfig.reportConsent?
 
-			# Ask the user if they agree to the TOS
-			consoleInterface.confirm locale.tosPrompt, {default:true}, (err, ok) ->
+			# Ask the user if they agree to be tracked
+			console.log locale.reportConsentInfo
+			consoleInterface.confirm locale.reportConsentPrompt, {default:true}, (err, ok) ->
 				# Check
 				return complete(err)  if err
 
 				# Track
-				docpad.track 'tos', {ok}, (err) ->
+				docpad.track 'reportConsent', {ok}, (err) ->
 					# Check
 					if ok
-						userConfig.tos = true
-						console.log locale.tosAgree
+						userConfig.reportConsent = true
+						console.log locale.reportConsentAgree
 						docpad.updateUserConfig(complete)
 						return
 					else
-						console.log locale.tosDisagree
-						process.exit()
+						userConfig.reportConsent = false
+						console.log locale.reportConsentDisagree
+						docpad.updateUserConfig(complete)
 						return
 
 		# Newsletter

@@ -1,13 +1,16 @@
 {
 	# Subscription
-	tosPrompt: """
-		Before we continue, have you read and agree to DocPad's Terms of Service (http://bevry.me/tos) and Privacy Policy (http://bevry.me/privacy)?
+	reportConsentInfo: """
+		DocPad can collect usage data and send it to the DocPad developers. This data is collected under the Terms of Service (http://bevry.me/tos) and Privacy Policy (http://bevry.me/privacy).
 		"""
-	tosAgree: """
+	reportConsentPrompt: """
+		Would you like to participate?
+		"""
+	reportConsentAgree: """
 		Fantastic. We like informed people!
 		"""
-	tosDisagree: """
-		Run us again once you've read and agree to them.
+	reportConsentDisagree: """
+		Okay, you won't be tracked.
 		"""
 	subscribePrompt: """
 		Would you like to subscribe to our newsletter and stay up to date with the latest releases and tutorials?
